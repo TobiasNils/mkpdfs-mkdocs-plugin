@@ -218,7 +218,7 @@ class Generator(object):
         a.insert(0, p.title)
         h4.append(a)
         menu.append(h4)
-        ul = self.html.new_tag('ul')
+        ul = self.html.new_tag('ol')
         if p.toc:
             for child in p.toc.items:
                 a = self.html.new_tag('a', href=child.url)
@@ -239,7 +239,7 @@ class Generator(object):
 
     def _gen_toc_page(self, url, toc):
         div = self.html.new_tag('div')
-        menu = self.html.new_tag('ul')
+        menu = self.html.new_tag('ol')
         for item in toc.items:
             li = self.html.new_tag('li')
             a = self.html.new_tag('a', href=item.url)
@@ -251,4 +251,4 @@ class Generator(object):
                 menu.append(child)
         div.append(menu)
         div = prep_combined(div, self._base_urls[url], url)
-        return div.find('ul')
+        return div.find('ol')
