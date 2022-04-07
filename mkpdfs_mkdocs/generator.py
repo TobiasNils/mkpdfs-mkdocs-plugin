@@ -198,7 +198,7 @@ class Generator(object):
                 self._toc.append(child)
 
     def _gen_children(self, url, children):
-        ul = self.html.new_tag('ul')
+        ul = self.html.new_tag('ol')
         for child in children:
             a = self.html.new_tag('a', href=child.url)
             a.insert(0, child.title)
