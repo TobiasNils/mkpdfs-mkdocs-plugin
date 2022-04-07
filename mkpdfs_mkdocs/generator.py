@@ -152,11 +152,11 @@ class Generator(object):
             h3 = self.html.new_tag('h3')
             h3.insert(0, n.title)
             self._toc.append(h3)
-            #if n.is_page:
-            #    ptoc = self._gen_toc_page(n.file.url, n.toc)
-            #    self._toc.append(ptoc)
-            #else:
-            self._gen_toc_section(n)
+            if n.is_page:
+                ptoc = self._gen_toc_page(n.file.url, n.toc)
+                self._toc.append(ptoc)
+            else:
+                self._gen_toc_section(n)
         self.html.body.append(self._toc)
 
     def add_cover(self):
