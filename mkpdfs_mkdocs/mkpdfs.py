@@ -16,6 +16,8 @@ class Mkpdfs(BasePlugin):
     config_scheme = (
         ('design', config_options.Type(str, default=None)),
         ('toc_title', config_options.Type(str, default="Table of Contents")),
+        ('toc_depth', config_options.Type(int, default=3)),
+        ('toc_numbered', config_options.Type(bool, default=False)),
         ('company', config_options.Type(str, default=None)),
         ('author', config_options.Type(str, default=None)),
         ('toc_position', config_options.Type(str, default="pre")),

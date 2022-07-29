@@ -64,8 +64,8 @@ class Generator(object):
 
     def add_nav(self, nav):
         self.nav = nav
-        for p in nav:
-            self.add_to_order(p)
+        for page in nav:
+            self.add_to_order(page)
 
     def add_to_order(self, page):
         if page.is_page and page.meta and 'pdf' in page.meta and not page.meta['pdf']:
@@ -110,7 +110,6 @@ class Generator(object):
             return None
         article = prep_combined(article, base_url, page.file.url)
         if page.meta and 'pdf' in page.meta and not page.meta['pdf']:
-            # print(page.meta)
             return self.get_path_to_pdf(page.file.dest_path)
         self._articles[page.file.url] = article
         return self.get_path_to_pdf(page.file.dest_path)
@@ -137,7 +136,7 @@ class Generator(object):
         return os.path.join(os.path.relpath(pdf_split[0],
                                             start_dir), pdf_split[1])
 
-    def add_tocs(self):
+    def create_tocs(self):
         title = self.html.new_tag('h1', id='toc-title')
         title.insert(0, self.config['toc_title'])
         self._toc = self.html.new_tag('article', id='contents')
@@ -152,11 +151,14 @@ class Generator(object):
             h3 = self.html.new_tag('h3')
             h3.insert(0, n.title)
             self._toc.append(h3)
+            self.toc_depth = 1
             if n.is_page:
                 ptoc = self._gen_toc_page(n.file.url, n.toc)
                 self._toc.append(ptoc)
             else:
                 self._gen_toc_section(n)
+                
+    def add_tocs(self):
         self.html.body.append(self._toc)
 
     def add_cover(self):
@@ -168,7 +170,36 @@ class Generator(object):
         self.html.body.append(a)
 
     def gen_articles(self):
+        #self.create_tocs()
+        for url in self._page_order:
+            if url in self._articles:
+                # insert numbers if config says so
+                if  self.config['toc_numbered']:
+                    soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
+                    tree = [soup.find('h1')]
+                    tree += tree[0].find_next_siblings()
+                    if  len(tree) > 1:                        
+                        counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
+                        indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
+                        while len(tree) > 0:
+                            tag = tree.pop(0)
+                            if  tag.name in counters:
+                                counters[tag.name] += 1 
+                                if tag.name == 'h1':
+                                    reset_counters = {'h{}'.format(i):0 for i in range(2, self.config['toc_depth'])}
+                                    counters.update(reset_counters) 
+                                    number = str(counters[tag.name])
+                                    tag.insert(0, number)
+                                    tag.insert(-1, ' ')
+                                else:
+                                    number = number[:indeces[tag.name]]
+                                    number += '.{}'.format(counters[tag.name])
+                                    tag.insert(0, number)
+                                    tag.insert(-1, ' ')
+                        self._articles[url] = soup.find('article')
+        # put everything together
         self.add_cover()
+        self.create_tocs()
         if self.config['toc_position'] == 'pre':
             self.add_tocs()
         for url in self._page_order:
@@ -183,7 +214,7 @@ class Generator(object):
         return os.path.join(os.path.relpath(pdf_split[0], start_dir),
                             pdf_split[1])
 
-    def _gen_toc_section(self, section):
+    def _gen_toc_section(self,  section):
         if section.children:  # External Links do not have children
             for p in section.children:
                 if p.is_page and p.meta and 'pdf' \
@@ -191,31 +222,37 @@ class Generator(object):
                     continue
                 if not hasattr(p, 'file'):
                     # Skip external links
-                    continue
+                    continue                    
                 stoc = self._gen_toc_for_section(p.file.url, p)
                 child = self.html.new_tag('div')
                 child.append(stoc)
                 self._toc.append(child)
 
     def _gen_children(self, url, children):
-        ul = self.html.new_tag('ul')
-        for child in children:
-            a = self.html.new_tag('a', href=child.url)
-            a.insert(0, child.title)
-            li = self.html.new_tag('li')
-            li.append(a)
-            if child.children:
-                sub = self._gen_children(url, child.children)
-                li.append(sub)
-            ul.append(li)
-        return ul
+        self.toc_depth += 1
+        if self.toc_depth > self.config['toc_depth']:
+            return None
+        else:
+            ul = self.html.new_tag('ul')
+            for child in children:
+                a = self.html.new_tag('a', href=child.url)
+                a.insert(0, child.title)
+                li = self.html.new_tag('li')
+                li.append(a)
+                if child.children:
+                    sub = self._gen_children(url, child.children)
+                    if sub:
+                        li.append(sub)
+                ul.append(li)
+            return ul
 
-    def _gen_toc_for_section(self, url, p):
+    def _gen_toc_for_section(self,  url, p):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('div')
         h4 = self.html.new_tag('h4')
         a = self.html.new_tag('a', href='#')
         a.insert(0, p.title)
+        self.toc_depth = 2
         h4.append(a)
         menu.append(h4)
         ul = self.html.new_tag('ul')
@@ -225,11 +262,17 @@ class Generator(object):
                 a.insert(0, child.title)
                 li = self.html.new_tag('li')
                 li.append(a)
+                self.toc_depth = 3
                 if child.title == p.title:
                     li = self.html.new_tag('div')
+                    self.toc_depth = 2
                 if child.children:
-                    sub = self._gen_children(url, child.children)
-                    li.append(sub)
+                    if self.toc_depth == 2:
+                        sub = self._gen_children(url, child.children)
+                    elif self.toc_depth == 3:
+                        sub = self._gen_children(url, child.children)
+                    if sub:
+                        li.append(sub)
                 ul.append(li)
             if len(p.toc.items) > 0:
                 menu.append(ul)
@@ -247,8 +290,9 @@ class Generator(object):
             li.append(a)
             menu.append(li)
             if item.children:
-                child = self._gen_children(url, item.children)
-                menu.append(child)
+                child = self._gen_children( url, item.children)
+                if child:
+                    menu.append(child)
         div.append(menu)
         div = prep_combined(div, self._base_urls[url], url)
         return div.find('ul')
