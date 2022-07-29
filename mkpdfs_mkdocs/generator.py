@@ -267,10 +267,7 @@ class Generator(object):
                     li = self.html.new_tag('div')
                     self.toc_depth = 2
                 if child.children:
-                    if self.toc_depth == 2:
-                        sub = self._gen_children(url, child.children)
-                    elif self.toc_depth == 3:
-                        sub = self._gen_children(url, child.children)
+                    sub = self._gen_children(url, child.children)
                     if sub:
                         li.append(sub)
                 ul.append(li)
@@ -283,12 +280,14 @@ class Generator(object):
     def _gen_toc_page(self, url, toc):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('ul')
+        self.toc_depth = 2
         for item in toc.items:
             li = self.html.new_tag('li')
             a = self.html.new_tag('a', href=item.url)
             a.append(item.title)
             li.append(a)
             menu.append(li)
+            self.toc_depth = 3
             if item.children:
                 child = self._gen_children( url, item.children)
                 if child:
