@@ -65,13 +65,29 @@ class Generator(object):
     def add_nav(self, nav):
         self.nav = nav
         for page in nav:
+            page.is_toplevel = True
             self.add_to_order(page)
 
     def add_to_order(self, page):
+        page.is_toplevel = page.is_toplevel if hasattr(page, 'is_toplevel') else False 
         if page.is_page and page.meta and 'pdf' in page.meta and not page.meta['pdf']:
             return
         if page.is_page:
-            self._page_order.append(page.file.url)
+            if page.is_toplevel:
+                uuid = str(uuid4())
+                self._page_order.append(uuid)
+                title = self.html.new_tag('h1',
+                                          id='{}-title'.format(uuid),
+                                          **{'class': 'section_title'}
+                                          )
+                title.append(page.title)
+                article = self.html.new_tag('article',
+                                            id='{}'.format(uuid),
+                                            **{'class': 'chapter'}
+                                            )
+                article.append(title)
+                self._articles[uuid] = article
+            self._page_order.append(page.file.url)                        
         elif page.children:
             uuid = str(uuid4())
             self._page_order.append(uuid)
@@ -88,6 +104,7 @@ class Generator(object):
             self._articles[uuid] = article
             for child in page.children:
                 self.add_to_order(child)
+
 
     def remove_from_order(self, item):
         return
