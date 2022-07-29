@@ -66,6 +66,7 @@ class Generator(object):
         self.nav = nav
         for page in nav:
             page.is_toplevel = True
+            page.is_standalone =  len(self.nav) == 1
             self.add_to_order(page)
 
     def add_to_order(self, page):
@@ -73,7 +74,7 @@ class Generator(object):
         if page.is_page and page.meta and 'pdf' in page.meta and not page.meta['pdf']:
             return
         if page.is_page:
-            if page.is_toplevel:
+            if page.is_toplevel and not page.is_standalone:
                 uuid = str(uuid4())
                 self._page_order.append(uuid)
                 title = self.html.new_tag('h1',
@@ -165,8 +166,10 @@ class Generator(object):
             if hasattr(n, 'url') and is_external(n.url):
                 # Skip toc generation for external links
                 continue
-            h3 = self.html.new_tag('h3')
-            h3.insert(0, n.title)
+            h3 = self.html.new_tag('p')
+            name = self.html.new_tag('strong')
+            name.insert(0, n.title)
+            h3.append(name)
             self._toc.append(h3)
             self.toc_depth = 1
             if n.is_page:
@@ -198,6 +201,8 @@ class Generator(object):
                     if  len(tree) > 1:                        
                         counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
                         indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
+                        names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, self.config['toc_depth']+1)}
+                        
                         while len(tree) > 0:
                             tag = tree.pop(0)
                             if  tag.name in counters:
@@ -213,6 +218,7 @@ class Generator(object):
                                     number += '.{}'.format(counters[tag.name])
                                     tag.insert(0, number)
                                     tag.insert(-1, ' ')
+                                tag.name = names[tag.name]
                         self._articles[url] = soup.find('article')
         # put everything together
         self.add_cover()
@@ -266,7 +272,7 @@ class Generator(object):
     def _gen_toc_for_section(self,  url, p):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('div')
-        h4 = self.html.new_tag('h4')
+        h4 = self.html.new_tag('li')
         a = self.html.new_tag('a', href='#')
         a.insert(0, p.title)
         self.toc_depth = 2
