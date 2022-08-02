@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from weasyprint import HTML, urls, CSS
 from bs4 import BeautifulSoup
+import re
 from weasyprint.text.fonts import FontConfiguration
 
 from mkpdfs_mkdocs.utils import gen_address
@@ -197,23 +198,26 @@ class Generator(object):
             if url in self._articles:
                 # insert numbers if config says so
                 if  self.config['toc_numbered']:
+                    headings = {'h{}'.format(i):0 for i in range(1, 10)}
+                    names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, 10)}
+                    counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
+                    indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
                     soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
                     tree = [soup.find('h1')]
                     tree += tree[0].find_next_siblings()
                     if  len(tree) <= 1:
                         # a new chapter starts -> reset all counters
-                        counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
+                        counters = {'h{}'.format(i):0 for i in range(1, 10)}
                     else:
-                        indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
-                        names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, self.config['toc_depth']+1)}
                         while len(tree) > 0:
                             tag = tree.pop(0)
                             if  tag.name in counters:
+                                # reset section counters
+                                level = int(tag.name.split('h')[-1])
+                                reset_counters = {'h{}'.format(i):0 for i in range(level+1, self.config['toc_depth']+1)}
+                                counters.update(reset_counters) 
                                 counters[tag.name] += 1 
                                 if tag.name == 'h1':
-                                    # reset section counters
-                                    reset_counters = {'h{}'.format(i):0 for i in range(2, self.config['toc_depth'])}
-                                    counters.update(reset_counters) 
                                     number = str(counters[tag.name])
                                     tag.insert(0, number)
                                     tag.insert(-1, ' ')
@@ -223,7 +227,10 @@ class Generator(object):
                                     tag.insert(0, number)
                                     tag.insert(-1, ' ')
                                 tag.name = names[tag.name]
-                        self._articles[url] = soup.find('article')
+                            elif tag.name in headings:
+                                tag.name = names[tag.name]
+                            self._articles[url] = soup.find('article')
+                            
         # put everything together
         self.add_cover()
         self.create_tocs()
@@ -255,19 +262,23 @@ class Generator(object):
                 child.append(stoc)
                 self._toc.append(child)
 
-    def _gen_children(self, url, children):
+    def _gen_children(self, url, children, soup=None):
         self.toc_depth += 1
         if self.toc_depth > self.config['toc_depth']:
             return None
         else:
             ul = self.html.new_tag('ul')
             for child in children:
+                #if self.config['toc_numbered'] and soup:
+                t = soup.find(['h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(child.title))
+                if t:
+                    child.title = t.text
                 a = self.html.new_tag('a', href=child.url)
                 a.insert(0, child.title)
                 li = self.html.new_tag('li')
                 li.append(a)
                 if child.children:
-                    sub = self._gen_children(url, child.children)
+                    sub = self._gen_children(url, child.children, soup)
                     if sub:
                         li.append(sub)
                 ul.append(li)
@@ -279,23 +290,33 @@ class Generator(object):
         menu = self.html.new_tag('div')
         h4 = self.html.new_tag('li')
         a = self.html.new_tag('a', href='#')
+        #if self.config['toc_numbered']:
+        soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
+        t = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(p.title))
+        if t:
+            p.title = t.text            
         a.insert(0, p.title)
-        self.toc_depth = 2
+        self.toc_depth = 1
         h4.append(a)
         menu.append(h4)
         ul = self.html.new_tag('div')
         if p.toc:
             for child in p.toc.items:
+                self.toc_depth = 2
+                #if self.config['toc_numbered']:
+                t = soup.find(['h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(child.title))
+                t = soup.find(string=re.compile(child.title))
+                if t:
+                    child.title = t.text
                 a = self.html.new_tag('a', href=child.url)
                 a.insert(0, child.title)
                 li = self.html.new_tag('li')
                 li.append(a)
-                self.toc_depth = 3
                 if child.title == p.title:
                     li = self.html.new_tag('div')
-                    self.toc_depth = 2
+                    self.toc_depth = 1
                 if child.children:
-                    sub = self._gen_children(url, child.children)
+                    sub = self._gen_children(url, child.children, soup)
                     if sub:
                         li.append(sub)
                 ul.append(li)
@@ -308,18 +329,27 @@ class Generator(object):
     def _gen_toc_page(self, url, toc):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('div')
-        self.toc_depth = 2
+        self.toc_depth = 1        
+        soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
         for item in toc.items:
+            print(item)
             li = self.html.new_tag('li')
             a = self.html.new_tag('a', href=item.url)
-            a.append(item.title)
-            li.append(a)
-            menu.append(li)
-            self.toc_depth = 3
-            if item.children:
-                child = self._gen_children( url, item.children)
-                if child:
-                    menu.append(child)
+            t = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(item.title))
+            if t:
+                print(t)
+                item.title = t.text
+                a.append(item.title)
+                li.append(a)
+                menu.append(li)
+                self.toc_depth = 2
+                if item.children:
+                    if 'Transport,' in item.title:
+                        print(item.children)
+                    child = self._gen_children( url, item.children, soup)
+                    if child:
+                        menu.append(child)
+            
         div.append(menu)
         div = prep_combined(div, self._base_urls[url], url)
         return div.find('div')
