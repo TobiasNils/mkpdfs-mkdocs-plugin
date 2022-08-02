@@ -21,6 +21,7 @@ class Mkpdfs(BasePlugin):
         ('company', config_options.Type(str, default=None)),
         ('author', config_options.Type(str, default=None)),
         ('toc_position', config_options.Type(str, default="pre")),
+        ('version_tag', config_options.Type(str, default=None)),
         ('pdf_links', config_options.Type(bool, default=True)),
         ('output_path', config_options.Type(str, default="pdf/combined.pdf")),
     )

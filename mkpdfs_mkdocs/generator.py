@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from git import Git, Repo
 from uuid import uuid4
 
 from weasyprint import HTML, urls, CSS
@@ -34,6 +35,21 @@ class Generator(object):
                                   'html.parser')
         self.dir = os.path.dirname(os.path.realpath(__file__))
         self.design = os.path.join(self.dir, 'design/report.css')
+  
+    def get_latest_version(self):
+        """
+        Function to get the latest tag from the git repository which matches
+        the configured regex for the version tag format.
+        :return: String with the highest semver tag, returns "unknown" if not found.
+        """
+        repo = Repo()
+        g = Git()
+        tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
+        if len(tags) > 0:
+            return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
+        else:
+            return "unknown"
+
 
     def set_config(self, local, config):
         self.config = local
@@ -46,6 +62,7 @@ class Generator(object):
         self.title = config['site_name']
         self.config['copyright'] = 'CC-BY-SA\
         ' if not config['copyright'] else config['copyright']
+        self.config['version_tag'] = self.config['version_tag'] if self.config['version_tag'] else self.get_latest_version() 
         self.mkdconfig = config
 
     def write(self):
@@ -194,6 +211,10 @@ class Generator(object):
     def add_cover(self):
         a = self.html.new_tag('article', id='doc-cover')
         title = self.html.new_tag('h1', id='doc-title')
+        version = self.html.new_tag('p', id='version')
+        if self.config['version_tag']:
+            version.insert(0, self.config['version_tag'])
+        title.append(version)
         title.insert(0, self.title)
         a.insert(0, title)
         a.append(gen_address(self.config))
