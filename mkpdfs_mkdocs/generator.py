@@ -76,12 +76,15 @@ class Generator(object):
         if page.is_page:
             if page.is_toplevel and not page.is_standalone:
                 uuid = str(uuid4())
-                self._page_order.append(uuid)
                 title = self.html.new_tag('h1',
                                           id='{}-title'.format(uuid),
                                           **{'class': 'section_title'}
                                           )
-                title.append(page.title)
+                try:
+                    title.append(page.title)
+                except ValueError:
+                    return
+                self._page_order.append(uuid)
                 article = self.html.new_tag('article',
                                             id='{}'.format(uuid),
                                             **{'class': 'chapter'}
@@ -190,7 +193,6 @@ class Generator(object):
         self.html.body.append(a)
 
     def gen_articles(self):
-        #self.create_tocs()
         for url in self._page_order:
             if url in self._articles:
                 # insert numbers if config says so
@@ -198,16 +200,18 @@ class Generator(object):
                     soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
                     tree = [soup.find('h1')]
                     tree += tree[0].find_next_siblings()
-                    if  len(tree) > 1:                        
+                    if  len(tree) <= 1:
+                        # a new chapter starts -> reset all counters
                         counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
+                    else:
                         indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
                         names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, self.config['toc_depth']+1)}
-                        
                         while len(tree) > 0:
                             tag = tree.pop(0)
                             if  tag.name in counters:
                                 counters[tag.name] += 1 
                                 if tag.name == 'h1':
+                                    # reset section counters
                                     reset_counters = {'h{}'.format(i):0 for i in range(2, self.config['toc_depth'])}
                                     counters.update(reset_counters) 
                                     number = str(counters[tag.name])
@@ -269,6 +273,7 @@ class Generator(object):
                 ul.append(li)
             return ul
 
+
     def _gen_toc_for_section(self,  url, p):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('div')
@@ -278,7 +283,7 @@ class Generator(object):
         self.toc_depth = 2
         h4.append(a)
         menu.append(h4)
-        ul = self.html.new_tag('ul')
+        ul = self.html.new_tag('div')
         if p.toc:
             for child in p.toc.items:
                 a = self.html.new_tag('a', href=child.url)
@@ -302,7 +307,7 @@ class Generator(object):
 
     def _gen_toc_page(self, url, toc):
         div = self.html.new_tag('div')
-        menu = self.html.new_tag('ul')
+        menu = self.html.new_tag('div')
         self.toc_depth = 2
         for item in toc.items:
             li = self.html.new_tag('li')
@@ -317,4 +322,4 @@ class Generator(object):
                     menu.append(child)
         div.append(menu)
         div = prep_combined(div, self._base_urls[url], url)
-        return div.find('ul')
+        return div.find('div')
