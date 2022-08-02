@@ -75,7 +75,7 @@ class Generator(object):
         if page.is_page and page.meta and 'pdf' in page.meta and not page.meta['pdf']:
             return
         if page.is_page:
-            if page.is_toplevel and not page.is_standalone:
+            if page.is_toplevel:
                 uuid = str(uuid4())
                 title = self.html.new_tag('h1',
                                           id='{}-title'.format(uuid),
@@ -86,10 +86,16 @@ class Generator(object):
                 except ValueError:
                     return
                 self._page_order.append(uuid)
-                article = self.html.new_tag('article',
+                if page.is_standalone:
+                    article = self.html.new_tag('article',
                                             id='{}'.format(uuid),
-                                            **{'class': 'chapter'}
+                                            **{'class': 'standalone'}
                                             )
+                else:
+                    article = self.html.new_tag('article',
+                        id='{}'.format(uuid),
+                        **{'class': 'chapter'}
+                        )
                 article.append(title)
                 self._articles[uuid] = article
             self._page_order.append(page.file.url)                        
@@ -205,7 +211,7 @@ class Generator(object):
                     soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
                     tree = [soup.find('h1')]
                     tree += tree[0].find_next_siblings()
-                    if  len(tree) <= 1:
+                    if  len(tree) == 1:
                         # a new chapter starts -> reset all counters
                         counters = {'h{}'.format(i):0 for i in range(1, 10)}
                     else:
