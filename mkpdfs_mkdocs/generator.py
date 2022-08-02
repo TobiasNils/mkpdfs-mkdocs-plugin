@@ -332,20 +332,16 @@ class Generator(object):
         self.toc_depth = 1        
         soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
         for item in toc.items:
-            print(item)
             li = self.html.new_tag('li')
             a = self.html.new_tag('a', href=item.url)
             t = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(item.title))
             if t:
-                print(t)
                 item.title = t.text
                 a.append(item.title)
                 li.append(a)
                 menu.append(li)
                 self.toc_depth = 2
                 if item.children:
-                    if 'Transport,' in item.title:
-                        print(item.children)
                     child = self._gen_children( url, item.children, soup)
                     if child:
                         menu.append(child)
