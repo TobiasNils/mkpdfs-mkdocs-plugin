@@ -46,9 +46,10 @@ class Generator(object):
         g = Git()
         tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
         if len(tags) > 0:
-            return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
+            #return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
+            return tags[-1]
         else:
-            return "unknown"
+            return "v1.0."
 
 
     def set_config(self, local, config):
