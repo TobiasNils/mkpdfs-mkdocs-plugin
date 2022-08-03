@@ -290,26 +290,21 @@ class Generator(object):
                 self._toc.append(child)
 
     def _gen_children(self, url, children, soup=None):
-        self.toc_depth += 1
-        if self.toc_depth > self.config['toc_depth']:
-            return None
-        else:
-            ul = self.html.new_tag('ul')
-            for child in children:
-                #if self.config['toc_numbered'] and soup:
-                t = soup.find(['h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(child.title))
-                if t:
-                    child.title = t.text
-                a = self.html.new_tag('a', href=child.url)
-                a.insert(0, child.title)
-                li = self.html.new_tag('li')
-                li.append(a)
-                if child.children:
-                    sub = self._gen_children(url, child.children, soup)
-                    if sub:
-                        li.append(sub)
-                ul.append(li)
-            return ul
+        ul = self.html.new_tag('ul')
+        for child in children:
+            #if self.config['toc_numbered'] and soup:
+            t = soup.find('h{}'.format(child.level+1), string=re.compile(child.title))
+            if t:
+                child.title = t.text
+            a = self.html.new_tag('a', href=child.url)
+            a.insert(0, child.title)
+            li = self.html.new_tag('li')
+            li.append(a)
+            if child.children and child.level < self.config['toc_depth']:
+                sub = self._gen_children(url, child.children, soup)
+                li.append(sub)
+            ul.append(li)
+        return ul
 
 
     def _gen_toc_for_section(self,  url, p):
@@ -319,19 +314,19 @@ class Generator(object):
         a = self.html.new_tag('a', href='#')
         #if self.config['toc_numbered']:
         soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
-        t = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(p.title))
+        t = soup.find('h2', string=re.compile(p.title))
         if t:
             p.title = t.text            
         a.insert(0, p.title)
-        self.toc_depth = 1
+        #self.toc_depth = 1
         h4.append(a)
         menu.append(h4)
         ul = self.html.new_tag('div')
         if p.toc:
             for child in p.toc.items:
-                self.toc_depth = 2
+                #self.toc_depth = 2
                 #if self.config['toc_numbered']:
-                t = soup.find(['h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(child.title))
+                t = soup.find('h{}'.format(child.level+1), string=re.compile(child.title))
                 t = soup.find(string=re.compile(child.title))
                 if t:
                     child.title = t.text
@@ -341,10 +336,10 @@ class Generator(object):
                 li.append(a)
                 if child.title == p.title:
                     li = self.html.new_tag('div')
-                    self.toc_depth = 1
+                    #self.toc_depth = 1
                 if child.children:
-                    sub = self._gen_children(url, child.children, soup)
-                    if sub:
+                    if child.level < self.config['toc_depth']:
+                        sub = self._gen_children(url, child.children, soup)
                         li.append(sub)
                 ul.append(li)
             if len(p.toc.items) > 0:
@@ -356,21 +351,21 @@ class Generator(object):
     def _gen_toc_page(self, url, toc):
         div = self.html.new_tag('div')
         menu = self.html.new_tag('div')
-        self.toc_depth = 1        
+        #self.toc_depth = 1        
         soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
         for item in toc.items:
             li = self.html.new_tag('li')
             a = self.html.new_tag('a', href=item.url)
-            t = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], string=re.compile(item.title))
+            t = soup.find('h{}'.format(item.level+1), string=re.compile(item.title))
             if t:
                 item.title = t.text
                 a.append(item.title)
                 li.append(a)
                 menu.append(li)
-                self.toc_depth = 2
+                #self.toc_depth = 2
                 if item.children:
-                    child = self._gen_children( url, item.children, soup)
-                    if child:
+                    if item.level < self.config['toc_depth']:
+                        child = self._gen_children( url, item.children, soup)
                         menu.append(child)
             
         div.append(menu)
