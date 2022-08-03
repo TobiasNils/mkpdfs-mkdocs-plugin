@@ -47,7 +47,7 @@ class Generator(object):
         tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
         if len(tags) > 0:
             #return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
-            return tags[-1]
+            return str(tags[-1])
         else:
             return "v1.0."
 
