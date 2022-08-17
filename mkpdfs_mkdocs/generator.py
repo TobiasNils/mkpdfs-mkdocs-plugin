@@ -222,20 +222,21 @@ class Generator(object):
         self.html.body.append(a)
 
     def gen_articles(self):
+        if  self.config['toc_numbered']:
+            headings = {'h{}'.format(i):0 for i in range(1, 10)}
+            names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, 10)}
+            indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
         for url in self._page_order:
             if url in self._articles:
                 # insert numbers if config says so
                 if  self.config['toc_numbered']:
-                    headings = {'h{}'.format(i):0 for i in range(1, 10)}
-                    names = {'h{}'.format(level):'h{}'.format(level+1) for level in range(1, 10)}
-                    counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
-                    indeces = {'h{}'.format(level):(2*level-3) for level in range(2, self.config['toc_depth']+1)}
                     soup = BeautifulSoup(str(self._articles[url]), 'html.parser')
                     tree = [soup.find('h1')]
                     tree += tree[0].find_next_siblings()
                     if  len(tree) == 1:
                         # a new chapter starts -> reset all counters
-                        counters = {'h{}'.format(i):0 for i in range(1, 10)}
+                        counters = {'h{}'.format(i):0 for i in range(1, self.config['toc_depth']+1)}
+                        #counters = {'h{}'.format(i):0 for i in range(1, 10)}
                     else:
                         while len(tree) > 0:
                             tag = tree.pop(0)
