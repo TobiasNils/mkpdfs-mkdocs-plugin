@@ -35,6 +35,11 @@ class Generator(object):
                                   'html.parser')
         self.dir = os.path.dirname(os.path.realpath(__file__))
         self.design = os.path.join(self.dir, 'design/report.css')
+    
+    def get_repo_name(self):
+        repo = Repo()
+        remote_url = repo.remotes[0].config_reader.get("url")  
+        return os.path.splitext(os.path.basename(remote_url))[0]
   
     def get_latest_version(self):
         """
@@ -46,10 +51,11 @@ class Generator(object):
         g = Git()
         tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
         if len(tags) > 0:
+            latest_tag = str(tags[-1]).split("v")
             #return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
-            return str(tags[-1])
+            return f"Version {latest_tag}"
         else:
-            return "v1.0."
+            return "Version 1.0"
 
 
     def set_config(self, local, config):
@@ -64,6 +70,7 @@ class Generator(object):
         self.config['copyright'] = 'CC-BY-SA\
         ' if not config['copyright'] else config['copyright']
         self.config['version_tag'] = self.config['version_tag'] if self.config['version_tag'] else self.get_latest_version() 
+        self.config['project_name'] = self.config['project_name'] if self.config['project_name'] else self.get_repo_name() 
         self.mkdconfig = config
 
     def write(self):
