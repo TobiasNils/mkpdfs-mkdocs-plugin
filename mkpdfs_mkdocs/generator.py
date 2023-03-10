@@ -51,7 +51,7 @@ class Generator(object):
         g = Git()
         tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
         if len(tags) > 0:
-            latest_tag = str(tags[-1]).split("v")
+            latest_tag = str(tags[-1]).split("v")[-1]
             #return '{} - {}'.format(tags[-1], g.log(n=1)[7:16])
             return f"Version {latest_tag}"
         else:
