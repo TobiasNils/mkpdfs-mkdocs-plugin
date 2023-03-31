@@ -302,7 +302,8 @@ class Generator(object):
         ul = self.html.new_tag('ul')
         for child in children:
             #if self.config['toc_numbered'] and soup:
-            t = soup.find('h{}'.format(child.level+1), string=re.compile(child.title))
+            print(child.title)
+            t = soup.find('h{}'.format(child.level+1), string=child.title)
             if t:
                 child.title = t.text
             a = self.html.new_tag('a', href=child.url)
